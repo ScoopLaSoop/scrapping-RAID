@@ -1,0 +1,11 @@
+# Configuration Airtable
+AIRTABLE_API_KEY=your_airtable_api_key_here
+AIRTABLE_BASE_ID=your_airtable_base_id_here
+AIRTABLE_TABLE_NAME=Entreprises
+
+# Configuration OpenAI
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-3.5-turbo
+
+# Configuration Make Webhook (déjà configuré)
+MAKE_WEBHOOK_URL=https://hook.eu2.make.com/mt23gnuf54r6vqzeby66n2gnv7ivkt56 

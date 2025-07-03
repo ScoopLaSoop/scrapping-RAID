@@ -1,0 +1,44 @@
+name: Bot de Scrapping Quotidien
+
+on:
+  # Exécution quotidienne à 9h UTC (10h Paris en hiver, 11h en été)
+  schedule:
+    - cron: '0 9 * * *'  # Tous les jours à 9h00 UTC
+  
+  # Permet l'exécution manuelle
+  workflow_dispatch:
+
+jobs:
+  scraping:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Récupération du code
+      uses: actions/checkout@v4
+    
+    - name: 🐳 Configuration Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: 🔧 Construction de l'image Docker
+      run: |
+        docker build -t scraper-bot .
+    
+    - name: 🚀 Exécution du bot de scrapping
+      run: |
+        docker run --rm \
+          -e AIRTABLE_API_KEY="${{ secrets.AIRTABLE_API_KEY }}" \
+          -e AIRTABLE_BASE_ID="${{ secrets.AIRTABLE_BASE_ID }}" \
+          -e AIRTABLE_TABLE_NAME="${{ secrets.AIRTABLE_TABLE_NAME }}" \
+          -e AIRTABLE_VIEW_NAME="${{ secrets.AIRTABLE_VIEW_NAME }}" \
+          -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+          -e OPENAI_ORG_ID="${{ secrets.OPENAI_ORG_ID }}" \
+          -e MAKE_WEBHOOK_URL="${{ secrets.MAKE_WEBHOOK_URL }}" \
+          --security-opt seccomp=unconfined \
+          --shm-size=2g \
+          scraper-bot
+    
+    - name: 📊 Affichage des logs
+      if: always()
+      run: |
+        echo "✅ Exécution terminée à $(date)"
+        echo "🔍 Consultez les logs ci-dessus pour les détails" 

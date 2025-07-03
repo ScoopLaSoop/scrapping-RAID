@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  scraper-bot:
+    build: .
+    container_name: scraper-bot
+    environment:
+      - AIRTABLE_API_KEY=${AIRTABLE_API_KEY}
+      - AIRTABLE_BASE_ID=${AIRTABLE_BASE_ID}
+      - AIRTABLE_TABLE_NAME=${AIRTABLE_TABLE_NAME}
+      - AIRTABLE_VIEW_NAME=${AIRTABLE_VIEW_NAME}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_ORG_ID=${OPENAI_ORG_ID}
+      - MAKE_WEBHOOK_URL=${MAKE_WEBHOOK_URL}
+    volumes:
+      - ./logs:/app/logs
+    security_opt:
+      - seccomp:unconfined
+    shm_size: 2g
+    stdin_open: true
+    tty: true 

@@ -1,0 +1,68 @@
+# Fichiers Git
+.git
+.gitignore
+
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Environnements virtuels
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+scrapping.log
+
+# Backups
+*.zip
+scrapping_backup_*.zip
+
+# Tests
+test_*.py
+
+# Documentation
+*.md
+production_setup.md
+
+# Exemples et debug
+demo.py
+debug_*.py
+env_example.txt
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Configurations locales
+.env.local
+.env.development 
