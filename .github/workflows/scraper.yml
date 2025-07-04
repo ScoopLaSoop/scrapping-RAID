@@ -23,7 +23,7 @@ jobs:
       run: |
         docker build -t scraper-bot .
     
-    - name: 🚀 Exécution du bot de scrapping
+    - name: 🚀 Exécution du bot de scrapping complet
       run: |
         docker run --rm \
           -e AIRTABLE_API_KEY="${{ secrets.AIRTABLE_API_KEY }}" \
@@ -32,10 +32,9 @@ jobs:
           -e AIRTABLE_VIEW_NAME="${{ secrets.AIRTABLE_VIEW_NAME }}" \
           -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
           -e OPENAI_ORG_ID="${{ secrets.OPENAI_ORG_ID }}" \
-          -e MAKE_WEBHOOK_URL="${{ secrets.MAKE_WEBHOOK_URL }}" \
           --security-opt seccomp=unconfined \
           --shm-size=2g \
-          scraper-bot
+          scraper-bot python main.py
     
     - name: 📊 Affichage des logs
       if: always()

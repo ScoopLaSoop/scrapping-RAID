@@ -1,6 +1,6 @@
 """
 Scrapper de sites web d'entreprises
-Utilise OpenAI pour trouver le site web puis scrappe les informations
+Utilise une recherche web réelle (Google/DuckDuckGo) puis OpenAI pour trouver les sites
 """
 
 import aiohttp
@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 import re
 from urllib.parse import urljoin, urlparse
 from config import Config
+from .web_search import WebSearcher
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class CompanyScraper:
     def __init__(self):
         self.config = Config()
         self.session = None
+        self.web_searcher = WebSearcher()
     
     async def get_session(self):
         """Crée ou retourne la session HTTP"""
@@ -31,11 +33,29 @@ class CompanyScraper:
     
     async def close_session(self):
         """Ferme la session HTTP"""
-        if self.session:
+        if self.session and not self.session.closed:
             await self.session.close()
+            self.session = None
+        
+        # Fermer aussi la session du web searcher
+        await self.web_searcher.close_session()
     
     async def find_company_website(self, company_name: str) -> Optional[str]:
-        """Utilise OpenAI pour trouver le site web de l'entreprise"""
+        """
+        Trouve le site web d'une entreprise via recherche web réelle
+        puis OpenAI en fallback
+        """
+        # Méthode 1: Recherche web réelle (Google/DuckDuckGo)
+        website_url = await self.web_searcher.search_company_website(company_name)
+        if website_url:
+            return website_url
+        
+        # Méthode 2: Fallback OpenAI (comme avant mais amélioré)
+        logger.info(f"🔄 Fallback OpenAI pour {company_name}")
+        return await self._find_website_via_openai(company_name)
+    
+    async def _find_website_via_openai(self, company_name: str) -> Optional[str]:
+        """Utilise OpenAI pour trouver le site web de l'entreprise (méthode fallback)"""
         try:
             headers = {
                 'Authorization': f'Bearer {self.config.OPENAI_API_KEY}',
@@ -47,11 +67,20 @@ class CompanyScraper:
                 headers['OpenAI-Organization'] = self.config.OPENAI_ORG_ID
             
             prompt = f"""
-            Je cherche le site web officiel de l'entreprise : "{company_name}"
+            Je cherche le site web officiel de l'entreprise française : "{company_name}"
             
-            Peux-tu me donner uniquement l'URL du site web officiel de cette entreprise ?
-            Réponds uniquement avec l'URL, sans explication supplémentaire.
-            Si tu ne connais pas l'entreprise, réponds "UNKNOWN".
+            Cette entreprise est située en France. Peux-tu me donner l'URL exacte de son site web officiel ?
+            
+            Essaie plusieurs variantes possibles :
+            - Avec et sans espaces/tirets
+            - Avec .fr ou .com
+            - Avec www ou sans www
+            
+            Instructions :
+            1. Réponds uniquement avec l'URL complète (avec https://)
+            2. Si tu connais l'entreprise, donne son site officiel
+            3. Si tu ne la connais pas, essaie de deviner l'URL la plus probable
+            4. Si vraiment impossible, réponds "UNKNOWN"
             
             Format de réponse attendu: https://example.com
             """
@@ -61,8 +90,8 @@ class CompanyScraper:
                 'messages': [
                     {'role': 'user', 'content': prompt}
                 ],
-                'max_tokens': 100,
-                'temperature': 0.1
+                'max_tokens': 150,
+                'temperature': 0.3  # Un peu plus créatif pour deviner
             }
             
             session = await self.get_session()
@@ -72,9 +101,28 @@ class CompanyScraper:
                     data = await response.json()
                     website_url = data['choices'][0]['message']['content'].strip()
                     
+                    # Nettoyer la réponse au cas où il y aurait du texte en plus
+                    lines = website_url.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line.startswith('http'):
+                            website_url = line
+                            break
+                    
                     if website_url and website_url != "UNKNOWN" and website_url.startswith('http'):
                         logger.info(f"🔍 Site trouvé pour {company_name}: {website_url}")
-                        return website_url
+                        
+                        # Vérifier que le site existe vraiment
+                        try:
+                            async with session.get(website_url, timeout=aiohttp.ClientTimeout(total=10)) as test_response:
+                                if test_response.status == 200:
+                                    return website_url
+                                else:
+                                    logger.warning(f"⚠️ Site non accessible ({test_response.status}): {website_url}")
+                                    return None
+                        except:
+                            logger.warning(f"⚠️ Site non accessible: {website_url}")
+                            return None
                     else:
                         logger.warning(f"⚠️ Site non trouvé pour {company_name}")
                         return None
@@ -98,14 +146,17 @@ class CompanyScraper:
             company_data = await self.scrape_website_data(website_url)
             company_data['website'] = website_url
             
+            # Extraire la raison sociale avec OpenAI
+            official_name = await self.extract_official_company_name(website_url, company_name)
+            if official_name:
+                company_data['raison_sociale'] = official_name
+                logger.info(f"🏢 Raison sociale trouvée: {official_name}")
+            
             return company_data
             
         except Exception as e:
             logger.error(f"❌ Erreur lors du scrapping de {company_name}: {str(e)}")
             return {'error': str(e)}
-        finally:
-            # Fermer la session
-            await self.close_session()
     
     async def scrape_website_data(self, url: str) -> Dict[str, Any]:
         """Scrappe les données d'un site web"""
@@ -204,4 +255,73 @@ class CompanyScraper:
             matches = re.findall(pattern, text)
             if matches:
                 return matches[0]
-        return None 
+        return None
+
+    async def extract_official_company_name(self, website_url: str, commercial_name: str) -> Optional[str]:
+        """Utilise OpenAI pour extraire la raison sociale officielle depuis le site web"""
+        try:
+            # D'abord récupérer le contenu du site
+            session = await self.get_session()
+            async with session.get(website_url) as response:
+                if response.status != 200:
+                    return None
+                    
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # Extraire le texte principal (limiter pour éviter le token limit)
+                text_content = soup.get_text()[:3000]  # Limiter à 3000 caractères
+                
+            # Utiliser OpenAI pour extraire la raison sociale
+            headers = {
+                'Authorization': f'Bearer {self.config.OPENAI_API_KEY}',
+                'Content-Type': 'application/json'
+            }
+            
+            if self.config.OPENAI_ORG_ID:
+                headers['OpenAI-Organization'] = self.config.OPENAI_ORG_ID
+            
+            prompt = f"""
+            Je cherche la raison sociale officielle de l'entreprise "{commercial_name}".
+            
+            Voici le contenu de leur site web :
+            {text_content}
+            
+            Peux-tu identifier la raison sociale officielle (nom légal) de cette entreprise ?
+            Cherche les mentions légales, le bas de page, ou toute référence à SARL, SAS, SA, EURL, etc.
+            
+            Réponds uniquement avec la raison sociale exacte, sans explication.
+            Si tu ne trouves pas, réponds "NOT_FOUND".
+            
+            Exemples de format:
+            - BIMBENET SARL
+            - SOCIÉTÉ DURALEX
+            - LEROY MERLIN FRANCE SAS
+            """
+            
+            payload = {
+                'model': self.config.OPENAI_MODEL,
+                'messages': [
+                    {'role': 'user', 'content': prompt}
+                ],
+                'max_tokens': 50,
+                'temperature': 0.1
+            }
+            
+            async with session.post('https://api.openai.com/v1/chat/completions', 
+                                  headers=headers, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    official_name = data['choices'][0]['message']['content'].strip()
+                    
+                    if official_name and official_name != "NOT_FOUND":
+                        return official_name
+                    else:
+                        return None
+                else:
+                    logger.error(f"❌ Erreur OpenAI API pour raison sociale: {response.status}")
+                    return None
+                    
+        except Exception as e:
+            logger.error(f"❌ Erreur extraction raison sociale: {str(e)}")
+            return None 

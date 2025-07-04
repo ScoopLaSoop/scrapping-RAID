@@ -85,6 +85,7 @@ class APILegalScraper:
             async with session.get(url) as response:
                 if response.status == 200:
                     data = await response.json()
+                    logger.info(f"📊 API gouv réponse pour {company_name}: {len(data.get('results', []))} résultats")
                     
                     results = data.get('results', [])
                     if results:
@@ -92,7 +93,13 @@ class APILegalScraper:
                         best_match = self._find_best_match(results, company_name)
                         
                         if best_match:
-                            return self._format_api_result(best_match)
+                            formatted_result = self._format_api_result(best_match)
+                            logger.info(f"✅ Données extraites pour {company_name}: SIRET={formatted_result.get('siret')}, SIREN={formatted_result.get('siren')}")
+                            return formatted_result
+                        else:
+                            logger.warning(f"⚠️ Aucun match trouvé pour {company_name} dans {len(results)} résultats")
+                    else:
+                        logger.warning(f"⚠️ Aucun résultat dans la réponse API pour {company_name}")
                 
                 logger.warning(f"⚠️ API gouv: {response.status} pour {company_name}")
                 return {'error': f'API gouv error: {response.status}'}
