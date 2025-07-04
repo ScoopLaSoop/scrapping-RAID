@@ -188,74 +188,259 @@ class CompanyScraper:
             return {'error': str(e)}
     
     def extract_address(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extrait l'adresse du site"""
+        """Extrait l'adresse du site avec méthodes améliorées"""
+        text = soup.get_text()
+        
+        # Patterns plus précis pour les adresses françaises
         patterns = [
-            r'\d+[\s,]+(?:rue|avenue|boulevard|place|allée|chemin|impasse)[^0-9]*',
-            r'(?:rue|avenue|boulevard|place|allée|chemin|impasse)[^0-9]*\d+',
+            # Numéro + type de voie + nom
+            r'\b\d{1,4}[\s,]*(?:bis|ter|quater)?\s*(?:rue|avenue|boulevard|place|allée|chemin|impasse|cours|quai|square|passage|villa|cité)\s+[A-Za-zÀ-ÿ\s\-\'\.]{2,50}',
+            # Type de voie + numéro + nom
+            r'\b(?:rue|avenue|boulevard|place|allée|chemin|impasse|cours|quai|square|passage|villa|cité)\s+[A-Za-zÀ-ÿ\s\-\'\.]*\s*\d{1,4}[\s,]*(?:bis|ter|quater)?',
+            # Recherche dans les balises spécifiques
+            r'(?i)(?:adresse|address)[\s:]*([^\n\r]{10,100})'
         ]
         
-        text = soup.get_text()
         for pattern in patterns:
             matches = re.findall(pattern, text, re.IGNORECASE)
             if matches:
-                return matches[0].strip()
+                # Nettoyer et valider l'adresse
+                address = matches[0].strip()
+                if len(address) > 8 and len(address) < 100:  # Longueur raisonnable
+                    return address
+        
+        # Chercher aussi dans les balises HTML spécifiques
+        address_selectors = [
+            '[itemprop="streetAddress"]',
+            '[class*="address"]',
+            '[class*="adresse"]',
+            '[id*="address"]',
+            '[id*="adresse"]'
+        ]
+        
+        for selector in address_selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                text = element.get_text().strip()
+                if len(text) > 8 and len(text) < 100:
+                    return text
+        
         return None
     
     def extract_postal_code(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extrait le code postal"""
+        """Extrait le code postal avec méthodes améliorées"""
         text = soup.get_text()
-        # Chercher un code postal français (5 chiffres)
-        matches = re.findall(r'\b\d{5}\b', text)
-        if matches:
-            return matches[0]
+        
+        # Patterns pour codes postaux français
+        patterns = [
+            r'\b\d{5}\b',  # 5 chiffres
+            r'(?i)(?:code postal|cp)[\s:]*(\d{5})',  # Avec label
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                # Vérifier que c'est un vrai code postal français
+                code = match if isinstance(match, str) else match
+                if code.isdigit() and len(code) == 5:
+                    # Codes postaux français commencent par 01-95 ou 2A/2B pour Corse
+                    first_two = int(code[:2])
+                    if 1 <= first_two <= 95:
+                        return code
+        
+        # Chercher dans les balises spécifiques
+        postal_selectors = [
+            '[itemprop="postalCode"]',
+            '[class*="postal"]',
+            '[class*="cp"]',
+            '[id*="postal"]'
+        ]
+        
+        for selector in postal_selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                text = element.get_text().strip()
+                if re.match(r'^\d{5}$', text):
+                    return text
+        
         return None
     
     def extract_city(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extrait la ville"""
+        """Extrait la ville avec méthodes améliorées"""
         text = soup.get_text()
-        # Chercher après un code postal
-        matches = re.findall(r'\b\d{5}\s+([A-Za-zÀ-ÿ\s-]+)', text)
-        if matches:
-            return matches[0].strip()
+        
+        # Patterns pour villes françaises
+        patterns = [
+            r'\b\d{5}\s+([A-Za-zÀ-ÿ\s\-\']{2,30})',  # Après code postal
+            r'(?i)(?:ville|city)[\s:]*([A-Za-zÀ-ÿ\s\-\']{2,30})',  # Avec label
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            for match in matches:
+                city = match.strip()
+                # Vérifier que c'est une ville valide (pas de chiffres, longueur raisonnable)
+                if len(city) > 2 and len(city) < 30 and not re.search(r'\d', city):
+                    return city
+        
+        # Chercher dans les balises spécifiques
+        city_selectors = [
+            '[itemprop="addressLocality"]',
+            '[class*="city"]',
+            '[class*="ville"]',
+            '[id*="city"]',
+            '[id*="ville"]'
+        ]
+        
+        for selector in city_selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                city = element.get_text().strip()
+                if len(city) > 2 and len(city) < 30 and not re.search(r'\d', city):
+                    return city
+        
         return None
     
     def extract_email(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extrait l'email"""
+        """Extrait l'email avec méthodes améliorées"""
         text = soup.get_text()
-        matches = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text)
-        if matches:
-            return matches[0]
+        
+        # Pattern pour emails
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        matches = re.findall(email_pattern, text)
+        
+        # Filtrer les emails non pertinents
+        excluded_domains = [
+            'example.com', 'test.com', 'noreply', 'no-reply',
+            'facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com',
+            'youtube.com', 'google.com', 'microsoft.com'
+        ]
+        
+        for email in matches:
+            email_lower = email.lower()
+            is_excluded = any(domain in email_lower for domain in excluded_domains)
+            
+            if not is_excluded and '.' in email and len(email) < 50:
+                return email
+        
+        # Chercher dans les balises spécifiques
+        email_selectors = [
+            'a[href^="mailto:"]',
+            '[itemprop="email"]',
+            '[class*="email"]',
+            '[id*="email"]'
+        ]
+        
+        for selector in email_selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                if selector == 'a[href^="mailto:"]':
+                    href = element.get('href', '')
+                    if href.startswith('mailto:'):
+                        email = href.replace('mailto:', '').strip()
+                        if re.match(email_pattern, email):
+                            return email
+                else:
+                    email = element.get_text().strip()
+                    if re.match(email_pattern, email):
+                        return email
+        
         return None
     
     def extract_phone(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extrait le numéro de téléphone fixe"""
+        """Extrait le numéro de téléphone fixe avec méthodes améliorées"""
         text = soup.get_text()
-        # Patterns pour téléphones français
+        
+        # Patterns pour téléphones français (fixes)
         patterns = [
-            r'\b0[1-5](?:[-.\s]?\d{2}){4}\b',
-            r'\b\+33[1-5](?:[-.\s]?\d{2}){4}\b'
+            # Formats standards français
+            r'\b0[1-5](?:[-.\s]?\d{2}){4}\b',  # 01 23 45 67 89
+            r'\b\+33[1-5](?:[-.\s]?\d{2}){4}\b',  # +33 1 23 45 67 89
+            r'\b(?:33|0033)[1-5](?:[-.\s]?\d{2}){4}\b',  # 0033 1 23 45 67 89
+            # Avec labels
+            r'(?i)(?:tél|tel|téléphone|telephone|fixe)[\s:]*([0-9\s\.\-\+]{10,20})',
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, text)
-            if matches:
-                return matches[0]
+            for match in matches:
+                phone = re.sub(r'[^\d\+]', '', match)  # Garder seulement chiffres et +
+                
+                # Normaliser le numéro
+                if phone.startswith('0033'):
+                    phone = '+33' + phone[4:]
+                elif phone.startswith('33') and len(phone) == 11:
+                    phone = '+33' + phone[2:]
+                
+                # Vérifier que c'est un numéro français valide
+                if phone.startswith('+33') and len(phone) == 12:
+                    return '+33 ' + phone[3:4] + ' ' + phone[4:6] + ' ' + phone[6:8] + ' ' + phone[8:10] + ' ' + phone[10:12]
+                elif phone.startswith('0') and len(phone) == 10:
+                    return phone[:2] + ' ' + phone[2:4] + ' ' + phone[4:6] + ' ' + phone[6:8] + ' ' + phone[8:10]
+        
+        # Chercher dans les balises spécifiques
+        phone_selectors = [
+            'a[href^="tel:"]',
+            '[itemprop="telephone"]',
+            '[class*="phone"]',
+            '[class*="tel"]',
+            '[id*="phone"]',
+            '[id*="tel"]'
+        ]
+        
+        for selector in phone_selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                if selector == 'a[href^="tel:"]':
+                    href = element.get('href', '')
+                    if href.startswith('tel:'):
+                        phone = re.sub(r'[^\d\+]', '', href.replace('tel:', ''))
+                        if len(phone) >= 10:
+                            return self._format_phone_number(phone)
+                else:
+                    phone_text = element.get_text().strip()
+                    phone = re.sub(r'[^\d\+]', '', phone_text)
+                    if len(phone) >= 10:
+                        return self._format_phone_number(phone)
+        
         return None
     
     def extract_mobile(self, soup: BeautifulSoup) -> Optional[str]:
-        """Extrait le numéro de téléphone mobile"""
+        """Extrait le numéro de téléphone mobile avec méthodes améliorées"""
         text = soup.get_text()
+        
         # Patterns pour mobiles français
         patterns = [
-            r'\b0[67](?:[-.\s]?\d{2}){4}\b',
-            r'\b\+33[67](?:[-.\s]?\d{2}){4}\b'
+            r'\b0[67](?:[-.\s]?\d{2}){4}\b',  # 06/07 XX XX XX XX
+            r'\b\+33[67](?:[-.\s]?\d{2}){4}\b',  # +33 6/7 XX XX XX XX
+            r'(?i)(?:mobile|portable|cell)[\s:]*([0-9\s\.\-\+]{10,20})',
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, text)
-            if matches:
-                return matches[0]
+            for match in matches:
+                phone = re.sub(r'[^\d\+]', '', match)
+                
+                # Vérifier que c'est un mobile français valide
+                if phone.startswith('0') and len(phone) == 10 and phone[1] in ['6', '7']:
+                    return phone[:2] + ' ' + phone[2:4] + ' ' + phone[4:6] + ' ' + phone[6:8] + ' ' + phone[8:10]
+                elif phone.startswith('+336') or phone.startswith('+337'):
+                    return self._format_phone_number(phone)
+        
         return None
+    
+    def _format_phone_number(self, phone: str) -> str:
+        """Formate un numéro de téléphone français"""
+        # Supprimer tous les caractères non numériques sauf +
+        clean_phone = re.sub(r'[^\d\+]', '', phone)
+        
+        # Format français standard
+        if clean_phone.startswith('+33') and len(clean_phone) == 12:
+            return '+33 ' + clean_phone[3:4] + ' ' + clean_phone[4:6] + ' ' + clean_phone[6:8] + ' ' + clean_phone[8:10] + ' ' + clean_phone[10:12]
+        elif clean_phone.startswith('0') and len(clean_phone) == 10:
+            return clean_phone[:2] + ' ' + clean_phone[2:4] + ' ' + clean_phone[4:6] + ' ' + clean_phone[6:8] + ' ' + clean_phone[8:10]
+        else:
+            return phone  # Retourner tel quel si format non reconnu
 
     async def extract_official_company_name(self, website_url: str, commercial_name: str) -> Optional[str]:
         """Utilise OpenAI pour extraire la raison sociale officielle depuis le site web"""
