@@ -44,9 +44,9 @@ async def main():
         companies = await airtable_client.get_companies()
         print(f"✅ {len(companies)} entreprises récupérées")
         
-        # Limiter aux 3 premières pour test
-        companies = companies[:3]
-        logger.info(f"🎯 Test avec {len(companies)} entreprises")
+        # Limiter selon la configuration
+        companies = companies[:config.MAX_COMPANIES]
+        logger.info(f"🎯 Traitement de {len(companies)} entreprises (limite: {config.MAX_COMPANIES})")
         
         # Initialisation des scrappeurs
         print("⚙️ Initialisation des scrappeurs...")

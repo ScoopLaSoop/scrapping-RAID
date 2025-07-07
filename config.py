@@ -32,6 +32,7 @@ class Config:
     SCRAPING_DELAY: float = 1.0  # Délai entre les requêtes (secondes)
     MAX_RETRIES: int = 3
     TIMEOUT: int = 30
+    MAX_COMPANIES: int = int(os.getenv('MAX_COMPANIES', '200'))  # Limite du nombre d'entreprises par exécution
     
     # User Agent pour les requêtes
     USER_AGENT: str = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' 
