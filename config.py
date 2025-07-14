@@ -14,7 +14,7 @@ class Config:
     # Configuration Airtable
     AIRTABLE_API_KEY: str = os.getenv('AIRTABLE_API_KEY', '')
     AIRTABLE_BASE_ID: str = os.getenv('AIRTABLE_BASE_ID', '')
-    AIRTABLE_TABLE_NAME: str = os.getenv('AIRTABLE_TABLE_NAME', 'Entreprises')
+    AIRTABLE_TABLE_NAME: str = os.getenv('AIRTABLE_TABLE_NAME', 'Base Client Contact')
     AIRTABLE_VIEW_NAME: str = os.getenv('AIRTABLE_VIEW_NAME', 'Scrapping')
     
     # Configuration OpenAI

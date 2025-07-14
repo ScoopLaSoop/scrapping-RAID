@@ -48,7 +48,7 @@ Système automatisé de collecte d'informations sur les entreprises françaises 
    ```
    AIRTABLE_API_KEY=votre_clé_airtable
    AIRTABLE_BASE_ID=votre_base_id
-   AIRTABLE_TABLE_NAME=Entreprises
+   AIRTABLE_TABLE_NAME=Base Client Contact
    AIRTABLE_VIEW_NAME=Vue principale
    OPENAI_API_KEY=votre_clé_openai (optionnel)
    OPENAI_ORG_ID=votre_org_id (optionnel)
@@ -83,7 +83,7 @@ docker build -t scraper-bot .
 docker run --rm \
   -e AIRTABLE_API_KEY="votre_clé" \
   -e AIRTABLE_BASE_ID="votre_base" \
-  -e AIRTABLE_TABLE_NAME="Entreprises" \
+  -e AIRTABLE_TABLE_NAME="Base Client Contact" \
   -e AIRTABLE_VIEW_NAME="Vue principale" \
   --security-opt seccomp=unconfined \
   --shm-size=2g \
@@ -97,7 +97,7 @@ docker run --rm \
 # Configuration Airtable (obligatoire)
 AIRTABLE_API_KEY=your_airtable_api_key
 AIRTABLE_BASE_ID=your_airtable_base_id
-AIRTABLE_TABLE_NAME=Entreprises
+AIRTABLE_TABLE_NAME=Base Client Contact
 AIRTABLE_VIEW_NAME=Vue principale
 
 # Configuration OpenAI (optionnel - pour fallback uniquement)

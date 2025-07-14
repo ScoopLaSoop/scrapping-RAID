@@ -1,9 +1,9 @@
 name: Bot de Scrapping Quotidien
 
 on:
-  # Exécution quotidienne à 9h UTC (10h Paris en hiver, 11h en été)
+  # Exécution quotidienne à 8h UTC (9h Paris en hiver, 10h en été)
   schedule:
-    - cron: '0 9 * * *'  # Tous les jours à 9h00 UTC
+    - cron: '0 8 * * *'  # Tous les jours à 8h00 UTC = 9h00 Paris
   
   # Permet l'exécution manuelle
   workflow_dispatch:
