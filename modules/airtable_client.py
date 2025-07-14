@@ -120,6 +120,10 @@ class AirtableClient:
                 if legal.get('ville') or legal.get('ville_legale'):
                     fields['Ville'] = legal.get('ville') or legal.get('ville_legale')
             
+            # Marquer comme scrappé si des données ont été récupérées
+            if 'website_data' in scraped_data or 'legal_data' in scraped_data:
+                fields['Get Scrapped ?'] = True
+            
             payload = {'fields': fields}
             
             async with aiohttp.ClientSession() as session:
