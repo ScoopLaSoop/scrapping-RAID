@@ -70,8 +70,6 @@ class APILegalScraper:
         except Exception as e:
             logger.error(f"❌ Erreur lors de la recherche API pour {company_name}: {e}")
             return {'error': str(e)}
-        finally:
-            await self.close_session()
     
     async def _search_via_gouv_api(self, company_name: str) -> Dict[str, Any]:
         """Recherche via l'API gouvernementale recherche-entreprises"""
