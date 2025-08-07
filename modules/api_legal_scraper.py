@@ -191,14 +191,45 @@ class APILegalScraper:
     
     def _format_api_result(self, result: Dict) -> Dict[str, Any]:
         """Formate le résultat de l'API gouvernementale"""
+        
+        # Récupérer le SIRET du siège social (priorité)
+        siret = result.get('siret')  # Essai direct d'abord
+        
+        if not siret:
+            # Récupérer depuis le siège
+            siege = result.get('siege', {})
+            if siege:
+                siret = siege.get('siret')
+        
+        if not siret:
+            # Fallback: chercher dans les établissements (prendre le siège si disponible)
+            etablissements = result.get('matching_etablissements', [])
+            for etab in etablissements:
+                if etab.get('est_siege') and etab.get('etat_administratif') == 'A':
+                    siret = etab.get('siret')
+                    break
+            
+            # Si pas de siège trouvé, prendre le premier établissement actif
+            if not siret:
+                for etab in etablissements:
+                    if etab.get('etat_administratif') == 'A':
+                        siret = etab.get('siret')
+                        break
+        
+        # Récupérer l'adresse du siège
+        siege = result.get('siege', {})
+        adresse_legale = siege.get('geo_adresse') or siege.get('adresse')
+        code_postal_legal = siege.get('code_postal')
+        ville_legale = siege.get('libelle_commune')
+        
         return {
-            'siret': result.get('siret'),
+            'siret': siret,
             'siren': result.get('siren'),
             'tva': self._calculate_tva(result.get('siren')),
             'raison_sociale': result.get('nom_raison_sociale') or result.get('nom_complet'),
-            'adresse_legale': result.get('adresse'),
-            'code_postal_legal': result.get('code_postal'),
-            'ville_legale': result.get('libelle_commune')
+            'adresse_legale': adresse_legale,
+            'code_postal_legal': code_postal_legal,
+            'ville_legale': ville_legale
         }
     
     def _format_pappers_result(self, enterprise: Dict) -> Dict[str, Any]:
