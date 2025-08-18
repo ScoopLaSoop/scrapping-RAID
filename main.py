@@ -80,18 +80,18 @@ async def run_scrapping():
             print(f"🆔 ID: {record_id}")
             
             try:
-                # Timeout global par entreprise (5 minutes max)
+                # Timeout global par entreprise (3 minutes max)
                 start_time = asyncio.get_event_loop().time()
-                max_time_per_company = 300  # 5 minutes
+                max_time_per_company = 180  # 3 minutes
                 
                 # ÉTAPE 1: Scrapping web pour trouver la raison sociale
                 print("🌐 ÉTAPE 1: Scrapping web...")
                 
                 try:
-                    # Timeout spécifique pour le scrapping web (2 minutes max)
+                    # Timeout optimisé pour le scrapping web (1 minute max)
                     website_data = await asyncio.wait_for(
                         company_scraper.scrape_company_website(company_name),
-                        timeout=120  # 2 minutes
+                        timeout=60  # 1 minute
                     )
                 except asyncio.TimeoutError:
                     print("⏰ Timeout scrapping web - Passage à l'étape suivante...")
@@ -236,8 +236,8 @@ async def run_scrapping():
                 # Continuer avec l'entreprise suivante
                 continue
             
-            # Petite pause entre les entreprises
-            await asyncio.sleep(2)
+            # Pause minimale entre les entreprises
+            await asyncio.sleep(1)
         
         # Fermer les sessions
         print("\n🔧 Fermeture des sessions...")

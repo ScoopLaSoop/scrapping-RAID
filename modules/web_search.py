@@ -127,65 +127,35 @@ class WebSearcher:
     
     async def search_company_website(self, company_name: str) -> Optional[str]:
         """
-        Recherche le site web d'une entreprise avec plusieurs méthodes
+        Recherche optimisée du site web d'une entreprise
+        Version accélérée : URL directe + Bing uniquement
         """
         logger.info(f"🔍 Recherche du site web pour: {company_name}")
         
-        # Détecter le type d'organisation
-        org_type = self._detect_organization_type(company_name)
-        if org_type == 'association':
-            logger.info(f"📋 {company_name} détectée comme association - recherche adaptée")
-        
-        # ÉTAPE 1: Chercher d'abord le nom exact de l'entreprise
+        # ÉTAPE 1: Test direct des URLs probables (le plus rapide)
         logger.info(f"🎯 Recherche du nom exact: {company_name}")
-        
-        # Méthode 1: Recherche directe avec variantes d'URL
         result = await self._try_direct_url_variants(company_name)
         if result:
             return result
         
-        # Méthode 2: Bing Search (souvent plus permissif que Google)
+        # ÉTAPE 2: Bing uniquement (plus rapide que DuckDuckGo)
         result = await self._search_via_bing(company_name)
         if result:
             return result
         
-        # Méthode 3: Google Custom Search API (si configuré)
-        if self.google_api_key and self.google_cx:
-            result = await self._search_via_google(company_name)
-            if result:
-                return result
-        
-        # Méthode 4: DuckDuckGo avec retry et delays
-        result = await self._search_via_duckduckgo_improved(company_name)
-        if result:
-            return result
-        
-        # Méthode 5: Recherche dans les annuaires professionnels
-        result = await self._search_professional_directories(company_name)
-        if result:
-            return result
-        
-        # Méthode 6: Recherche via des moteurs alternatifs
-        result = await self._search_via_alternative_engines(company_name)
-        if result:
-            return result
-        
-        # ÉTAPE 2: Si le nom exact ne fonctionne pas, essayer les variantes
+        # ÉTAPE 3: Test des variantes du nom (URL directe + Bing)
         logger.info(f"⚠️ Nom exact non trouvé, test des variantes...")
-        
-        # Générer des variantes du nom
         name_variants = self._generate_name_variants(company_name)
-        # Retirer le nom original des variantes (déjà testé)
         name_variants = [v for v in name_variants if v != company_name]
         
         if name_variants:
-            logger.info(f"🔄 Variantes à tester: {name_variants[:3]}...")
+            logger.info(f"🔄 Variantes à tester: {name_variants[:2]}...")
             
-            # Tester les variantes les plus prometteuses (max 3)
-            for i, variant in enumerate(name_variants[:3]):
+            # Tester seulement les 2 premières variantes
+            for i, variant in enumerate(name_variants[:2]):
                 logger.info(f"🔍 Test variante {i+1}: {variant}")
                 
-                # Test direct URL uniquement pour les variantes (plus rapide)
+                # Test direct URL uniquement pour les variantes
                 result = await self._try_direct_url_variants(variant)
                 if result:
                     return result
@@ -195,11 +165,10 @@ class WebSearcher:
                 if result:
                     return result
                 
-                # Pause entre les variantes pour éviter le rate limiting
-                await asyncio.sleep(1)
+                # Pause minimale entre les variantes
+                await asyncio.sleep(0.5)
         
-        # ÉTAPE 3: Fallback OpenAI (dernière chance)
-        logger.warning(f"⚠️ Toutes les recherches web échouées pour {company_name}, fallback OpenAI")
+        logger.warning(f"⚠️ Aucun site trouvé pour {company_name}")
         return None
     
     async def _try_direct_url_variants(self, company_name: str) -> Optional[str]:
@@ -222,10 +191,10 @@ class WebSearcher:
         for url in url_variants:
             try:
                 session = await self.get_session()
-                async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=3)) as response:
                     if response.status == 200:
-                        # Vérifier que c'est bien le bon site
-                        if await self._verify_website_relevance(url, company_name):
+                        # Vérification rapide de pertinence
+                        if await self._verify_website_relevance_fast(url, company_name):
                             logger.info(f"✅ URL directe trouvée: {url}")
                             return url
                         else:
@@ -233,8 +202,8 @@ class WebSearcher:
             except:
                 continue
             
-            # Petite pause pour éviter les erreurs
-            await asyncio.sleep(0.5)
+            # Pause minimale
+            await asyncio.sleep(0.2)
         
         logger.info(f"❌ Aucune URL directe trouvée pour: {company_name}")
         return None
@@ -270,7 +239,7 @@ class WebSearcher:
         return name.strip('-')
     
     async def _search_via_bing(self, company_name: str) -> Optional[str]:
-        """Recherche via Bing (souvent plus permissif)"""
+        """Recherche via Bing (optimisée pour la vitesse)"""
         try:
             logger.info(f"🔍 Recherche Bing pour: {company_name}")
             session = await self.get_session()
@@ -285,8 +254,8 @@ class WebSearcher:
                 'cc': 'FR'
             }
             
-            # Ajouter un délai aléatoire pour éviter la détection
-            await asyncio.sleep(random.uniform(1, 3))
+            # Délai minimal pour éviter la détection
+            await asyncio.sleep(random.uniform(0.5, 1.5))
             
             async with session.get(url, params=params) as response:
                 if response.status == 200:
@@ -408,6 +377,36 @@ class WebSearcher:
         # Cette méthode pourrait être développée pour parser les annuaires
         # Pour l'instant, on retourne None (à implémenter si besoin)
         return None
+    
+    async def _verify_website_relevance_fast(self, url: str, company_name: str) -> bool:
+        """Vérification rapide de pertinence (version optimisée)"""
+        try:
+            session = await self.get_session()
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                if response.status == 200:
+                    html = await response.text()
+                    html_lower = html.lower()
+                    
+                    # Vérification rapide : nom de l'entreprise + indicateurs français
+                    company_words = [word.lower() for word in company_name.split() if len(word) > 2]
+                    company_matches = sum(1 for word in company_words if word in html_lower)
+                    
+                    french_indicators = ['france', 'français', 'fr', 'siret', 'siren', 'tva']
+                    french_score = sum(1 for indicator in french_indicators if indicator in html_lower)
+                    
+                    # Validation rapide
+                    is_relevant = (
+                        company_matches >= len(company_words) * 0.3 and  # Au moins 30% des mots
+                        french_score >= 1 and  # Au moins un indicateur français
+                        '.fr' in url  # Domaine français
+                    )
+                    
+                    return is_relevant
+                else:
+                    return False
+        except Exception as e:
+            logger.error(f"❌ Erreur validation rapide {url}: {str(e)}")
+            return False
     
     async def _verify_website_relevance(self, url: str, company_name: str) -> bool:
         """Vérifie si un site web contient bien des informations sur l'entreprise française"""

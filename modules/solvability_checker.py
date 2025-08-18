@@ -58,7 +58,6 @@ class SolvabilityChecker:
                 'status': 'active',  # active, closed, liquidation, redressement, unknown
                 'risk_level': 'low',  # low, medium, high, unknown
                 'details': [],
-                'last_check': datetime.now().isoformat(),
                 'sources_checked': []
             }
             
@@ -110,7 +109,6 @@ class SolvabilityChecker:
                 'status': 'unknown',
                 'risk_level': 'unknown',
                 'details': [f"Erreur lors de la vérification: {str(e)}"],
-                'last_check': datetime.now().isoformat(),
                 'sources_checked': [],
                 'error': str(e)
             }

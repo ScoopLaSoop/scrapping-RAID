@@ -120,7 +120,7 @@ class AirtableClient:
                 if legal.get('ville') or legal.get('ville_legale'):
                     fields['Ville'] = legal.get('ville') or legal.get('ville_legale')
             
-            # Données de solvabilité
+            # Données de solvabilité (utiliser seulement les champs existants)
             if 'solvability_data' in scraped_data:
                 solvability = scraped_data['solvability_data']
                 if solvability.get('is_solvent') is not None:
@@ -133,8 +133,6 @@ class AirtableClient:
                     # Joindre les détails en une seule chaîne
                     details_text = "; ".join([str(detail) for detail in solvability['details']])
                     fields['Détails Solvabilité'] = details_text[:1000]  # Limiter la taille
-                if solvability.get('last_check'):
-                    fields['Dernière Vérif Solvabilité'] = solvability['last_check']
 
             # Marquer comme scrappé si des données ont été récupérées
             if 'website_data' in scraped_data or 'legal_data' in scraped_data or 'solvability_data' in scraped_data:
