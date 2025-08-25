@@ -1,5 +1,5 @@
 # Dépendances minimales pour le webhook (sans Chrome)
-aiohttp==3.9.1
-requests==2.31.0
-python-dotenv==1.0.0
-pyairtable==2.2.3
+aiohttp
+requests
+python-dotenv
+pyairtable

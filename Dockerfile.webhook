@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copier les fichiers de dépendances légères
-COPY requirements_light.txt .
-
-# Installer les dépendances Python
-RUN pip install --no-cache-dir -r requirements_light.txt
+# Installer les dépendances Python une par une
+RUN pip install --no-cache-dir aiohttp
+RUN pip install --no-cache-dir requests
+RUN pip install --no-cache-dir python-dotenv
+RUN pip install --no-cache-dir pyairtable
 
 # Copier le code source
 COPY . .
