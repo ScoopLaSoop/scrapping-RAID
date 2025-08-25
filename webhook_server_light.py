@@ -65,9 +65,13 @@ class WebhookServerLight:
             scraped_data = await self.scrape_single_company_api(company_name)
             
             # Mettre à jour Airtable
-            await self.airtable_client.update_company_data(record_id, scraped_data)
+            update_success = await self.airtable_client.update_company_data(record_id, scraped_data)
             
             logger.info(f"✅ Scrapping API terminé pour: {company_name}")
+            
+            # Envoyer les notifications vers Make.com si la mise à jour Airtable a réussi
+            if update_success:
+                await self.send_notifications_to_make(record_id, company_name)
             
             return web.json_response({
                 'status': 'success',
@@ -113,6 +117,41 @@ class WebhookServerLight:
             scraped_data['error'] = str(e)
         
         return scraped_data
+    
+    async def send_notifications_to_make(self, record_id: str, company_name: str):
+        """Envoie les notifications vers les webhooks Make.com"""
+        try:
+            # URLs des webhooks Make.com
+            webhook_urls = [
+                "https://hook.eu2.make.com/xntfo1d88k770bq8uykemtr7gvunh2y8",
+                "https://hook.eu2.make.com/e86l71aeljrvlqvor4seahpv57gxl89b"
+            ]
+            
+            # Données à envoyer
+            notification_data = {
+                "record_id": record_id,
+                "company_name": company_name,
+                "scrapping_completed": True,
+                "timestamp": datetime.now().isoformat(),
+                "source": "scrapping-RAID-webhook"
+            }
+            
+            logger.info(f"📤 Envoi des notifications vers {len(webhook_urls)} webhooks Make.com")
+            
+            # Envoyer vers chaque webhook
+            for i, url in enumerate(webhook_urls, 1):
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.post(url, json=notification_data, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                            if response.status == 200:
+                                logger.info(f"✅ Notification {i} envoyée avec succès vers Make.com")
+                            else:
+                                logger.warning(f"⚠️ Erreur notification {i}: {response.status}")
+                except Exception as e:
+                    logger.error(f"❌ Erreur envoi notification {i}: {str(e)}")
+                    
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de l'envoi des notifications: {str(e)}")
     
     async def health_check(self, request):
         """Endpoint de santé pour Railway"""
