@@ -125,8 +125,9 @@ class AirtableClient:
                 solvability = scraped_data['solvability_data']
                 if solvability.get('is_solvent') is not None:
                     fields['État de la société'] = "Fermé/Insolvable" if solvability.get('is_solvent') is False else "OK"
-                if solvability.get('status'):
-                    fields['Statut Entreprise'] = solvability['status']
+                # Note: Le champ 'Statut Entreprise' n'existe pas dans Airtable
+                # if solvability.get('status'):
+                #     fields['Statut Entreprise'] = solvability['status']
                 if solvability.get('risk_level'):
                     fields['Niveau de Risque'] = solvability['risk_level']
                 if solvability.get('details'):

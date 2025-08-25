@@ -89,14 +89,19 @@ class WebhookServerLight:
         try:
             # 1. API légale (SIRET, SIREN, TVA, etc.)
             logger.info(f"🏛️ API légale pour: {company_name}")
-            legal_data = await self.api_legal_scraper.get_company_info(company_name)
+            legal_data = await self.api_legal_scraper.scrape_legal_info(company_name)
             if legal_data:
                 scraped_data['legal_data'] = legal_data
                 logger.info(f"✅ Données légales récupérées pour: {company_name}")
             
             # 2. Vérification solvabilité
             logger.info(f"🏦 Vérification solvabilité pour: {company_name}")
-            solvability_data = await self.solvability_checker.check_company_solvability(company_name)
+            # Créer un dictionnaire avec les données de l'entreprise
+            company_data = {
+                'name': company_name,
+                'raison_sociale': company_name
+            }
+            solvability_data = await self.solvability_checker.check_company_solvability(company_data)
             if solvability_data:
                 scraped_data['solvability_data'] = solvability_data
                 logger.info(f"✅ Données solvabilité récupérées pour: {company_name}")
