@@ -1,4 +1,4 @@
-# Dockerfile léger pour le webhook (sans Chrome)
+# Dockerfile ultra-léger pour le webhook (sans Chrome)
 FROM python:3.11-slim
 
 # Définir le répertoire de travail
@@ -6,15 +6,14 @@ WORKDIR /app
 
 # Installer les dépendances système minimales
 RUN apt-get update && apt-get install -y \
-    wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copier les fichiers de dépendances
-COPY requirements.txt .
+# Copier les fichiers de dépendances légères
+COPY requirements_light.txt .
 
-# Installer les dépendances Python (sans selenium)
-RUN pip install --no-cache-dir aiohttp requests python-dotenv
+# Installer les dépendances Python
+RUN pip install --no-cache-dir -r requirements_light.txt
 
 # Copier le code source
 COPY . .
@@ -23,4 +22,4 @@ COPY . .
 EXPOSE 8080
 
 # Commande de démarrage
-CMD ["python3", "webhook_server.py"]
+CMD ["python3", "webhook_server_light.py"]
