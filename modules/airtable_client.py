@@ -154,3 +154,28 @@ class AirtableClient:
         except Exception as e:
             logger.error(f"❌ Erreur lors de la mise à jour des données: {str(e)}")
             return False 
+
+    async def get_company_by_id(self, record_id: str) -> Dict[str, Any]:
+        """Récupère une entreprise spécifique par son record ID"""
+        try:
+            url = f"{self.base_url}/{self.config.AIRTABLE_TABLE_NAME}/{record_id}"
+            
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=self.headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        record = data.get('records', [{}])[0] # Get the first record or an empty dict
+                        fields = record.get('fields', {})
+                        company_data = {
+                            'id': record.get('id'),
+                            'name': fields.get('Nom', ''),
+                            'airtable_record_id': record.get('id')
+                        }
+                        logger.info(f"✅ Entreprise récupérée par ID: {record_id}")
+                        return company_data
+                    else:
+                        logger.error(f"❌ Erreur API Airtable: {response.status} pour l'entreprise {record_id}")
+                        return {}
+        except Exception as e:
+            logger.error(f"❌ Erreur lors de la récupération de l'entreprise par ID: {str(e)}")
+            return {} 
