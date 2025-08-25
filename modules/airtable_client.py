@@ -165,17 +165,23 @@ class AirtableClient:
                 async with session.get(url, headers=self.headers) as response:
                     if response.status == 200:
                         data = await response.json()
-                        record = data.get('records', [{}])[0] # Get the first record or an empty dict
-                        fields = record.get('fields', {})
+                        logger.info(f"📊 Réponse Airtable brute: {data}")
+                        
+                        # Airtable retourne directement l'enregistrement, pas dans 'records'
+                        fields = data.get('fields', {})
                         company_data = {
-                            'id': record.get('id'),
-                            'name': fields.get('Nom', ''),
-                            'airtable_record_id': record.get('id')
+                            'id': data.get('id'),
+                            'name': fields.get('Nom', ''),  # Chercher le champ "Nom"
+                            'airtable_record_id': data.get('id'),
+                            'fields': fields
                         }
                         logger.info(f"✅ Entreprise récupérée par ID: {record_id}")
+                        logger.info(f"📋 Champs trouvés: {list(fields.keys())}")
+                        logger.info(f"📋 Nom trouvé: '{company_data['name']}'")
                         return company_data
                     else:
-                        logger.error(f"❌ Erreur API Airtable: {response.status} pour l'entreprise {record_id}")
+                        error_text = await response.text()
+                        logger.error(f"❌ Erreur API Airtable: {response.status} - {error_text}")
                         return {}
         except Exception as e:
             logger.error(f"❌ Erreur lors de la récupération de l'entreprise par ID: {str(e)}")

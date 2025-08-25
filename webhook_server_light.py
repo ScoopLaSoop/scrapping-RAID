@@ -56,7 +56,9 @@ class WebhookServerLight:
                     'status': 'error'
                 }, status=404)
             
-            company_name = company.get('fields', {}).get('Nom de l\'entreprise', '')
+            company_name = company.get('name', '')
+            logger.info(f"📋 Nom de l'entreprise récupéré: '{company_name}'")
+            logger.info(f"📋 Tous les champs: {company.get('fields', {})}")
             logger.info(f"🏢 Scrapping API de l'entreprise: {company_name}")
             
             # Lancer le scrapping API uniquement
