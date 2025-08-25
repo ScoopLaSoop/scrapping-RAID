@@ -123,6 +123,8 @@ class WebhookServerLight:
     async def send_notifications_to_make(self, record_id: str, company_name: str):
         """Envoie les notifications vers les webhooks Make.com"""
         try:
+            import aiohttp  # Import local pour éviter les conflits
+            
             # URLs des webhooks Make.com
             webhook_urls = [
                 "https://hook.eu2.make.com/xntfo1d88k770bq8uykemtr7gvunh2y8",
