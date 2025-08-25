@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 class WebhookServerLight:
     def __init__(self):
         self.config = Config()
+        # Mise à jour temporaire de la clé API pour le test
+        self.config.AIRTABLE_API_KEY = "patafQahY2YJYz2ZJ.0106dddf44d1c536bcefbd6566ecdd9861cb1f4461ecb31cf27fabb2a6132604"
         self.airtable_client = AirtableClient()
         self.api_legal_scraper = APILegalScraper()
         self.solvability_checker = SolvabilityChecker()
